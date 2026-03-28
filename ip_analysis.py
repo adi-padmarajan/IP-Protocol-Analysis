@@ -18,9 +18,9 @@ import math
 from collections import defaultdict
 
 
-# ---------------------------------------------------------------------------
+
 # Pcap / packet parsing (no external libraries)
-# ---------------------------------------------------------------------------
+
 
 def read_pcap(filename):
     """Read a pcap file manually and return a list of packet dicts."""
@@ -122,16 +122,16 @@ def parse_icmp(data):
     return result
 
 
-# ---------------------------------------------------------------------------
+
 # Main analysis
-# ---------------------------------------------------------------------------
+
 
 def analyze_trace(filename):
     raw_packets = read_pcap(filename)
 
-    # ------------------------------------------------------------------
+    
     # Pass 1 – Parse every IPv4 packet
-    # ------------------------------------------------------------------
+   
     parsed = []                # list of enriched packet dicts
     protocols_seen = set()     # protocol numbers (only ICMP / UDP kept)
 
@@ -177,9 +177,9 @@ def analyze_trace(filename):
 
         parsed.append(info)
 
-    # ------------------------------------------------------------------
+    
     # Pass 2 – Detect traceroute mode (UDP vs ICMP) and source/dest
-    # ------------------------------------------------------------------
+   
     udp_probes = [p for p in parsed
                   if 'udp' in p and p['ip']['protocol'] == 17
                   and 33434 <= p['udp']['dst_port'] <= 33529]
@@ -209,9 +209,9 @@ def analyze_trace(filename):
         print("Error: no traceroute probes found in", filename)
         sys.exit(1)
 
-    # ------------------------------------------------------------------
+    
     # Pass 3 – Build probe table
-    # ------------------------------------------------------------------
+
     # Each probe is keyed by its matching identifier (UDP src_port or
     # ICMP echo sequence number).  For fragmented datagrams the key is
     # taken from fragment-0; other fragments are associated via IP ID.
@@ -267,9 +267,9 @@ def analyze_trace(filename):
                 }],
             }
 
-    # ------------------------------------------------------------------
+    
     # Pass 4 – Collect ICMP responses and match to probes
-    # ------------------------------------------------------------------
+   
     # For each response we store:
     #   router_ip, match_key, timestamp
 
@@ -336,9 +336,8 @@ def analyze_trace(filename):
             router_first_idx[router_ip] = response_idx
         response_idx += 1
 
-    # ------------------------------------------------------------------
     # Build ordered list of intermediate routers and ultimate destination
-    # ------------------------------------------------------------------
+
     intermediate = []
     ultimate_ip = None
 
@@ -352,9 +351,9 @@ def analyze_trace(filename):
     intermediate.sort(key=lambda r: (router_min_ttl.get(r, 999),
                                      router_first_idx.get(r, 999)))
 
-    # ------------------------------------------------------------------
+    
     # Fragmentation analysis (outgoing probes only)
-    # ------------------------------------------------------------------
+    
     frag_count = 0
     last_frag_offset = 0
 
@@ -365,9 +364,9 @@ def analyze_trace(filename):
             last_frag_offset = max(f['frag_offset'] for f in frags)
             break       # all datagrams fragment the same way
 
-    # ------------------------------------------------------------------
+   
     # Output
-    # ------------------------------------------------------------------
+   
     print(f"The IP address of the source node: {source_ip}")
     print(f"The IP address of ultimate destination node: {dest_ip}")
 
@@ -412,7 +411,7 @@ def analyze_trace(filename):
     print()
 
 
-# ---------------------------------------------------------------------------
+
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Usage: python3 ip_analysis.py <pcap_file>")

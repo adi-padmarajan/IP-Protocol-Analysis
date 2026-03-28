@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-R2 Analysis - CSc 361 Assignment 3
+R2 Analysis
 
 Analyzes the two groups of trace files for Requirement 2.
 Outputs:
@@ -18,9 +18,8 @@ import math
 from collections import defaultdict, OrderedDict
 
 
-# ---------------------------------------------------------------------------
+
 # Pcap / packet parsing (reused from ip_analysis.py)
-# ---------------------------------------------------------------------------
 
 def read_pcap(filename):
     packets = []
@@ -101,9 +100,9 @@ def parse_icmp(data):
     return result
 
 
-# ---------------------------------------------------------------------------
+
 # Per-trace analysis returning structured data
-# ---------------------------------------------------------------------------
+
 
 def analyze_one_trace(filename):
     """Return structured analysis results for one trace file."""
@@ -303,9 +302,8 @@ def analyze_one_trace(filename):
     }
 
 
-# ---------------------------------------------------------------------------
+
 # Main
-# ---------------------------------------------------------------------------
 
 def analyze_group(group_name, trace_files):
     print("=" * 70)
