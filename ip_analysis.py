@@ -134,6 +134,8 @@ def analyze_trace(filename):
    
     parsed = []                # list of enriched packet dicts
     protocols_seen = set()     # protocol numbers (only ICMP / UDP kept)
+                               # populated after mode detection to exclude
+                               # irrelevant background traffic (e.g. DNS)
 
     for rpkt in raw_packets:
         if rpkt['link_type'] != 1:          # only Ethernet
@@ -147,11 +149,8 @@ def analyze_trace(filename):
         if ip is None:
             continue
 
-        proto = ip['protocol']
-        if proto in (1, 17):
-            protocols_seen.add(proto)
-
         info = {'timestamp': rpkt['timestamp'], 'ip': ip}
+        proto = ip['protocol']
 
         if proto == 17 and ip['frag_offset'] == 0:
             udp = parse_udp(ip['payload'])
@@ -208,6 +207,12 @@ def analyze_trace(filename):
     else:
         print("Error: no traceroute probes found in", filename)
         sys.exit(1)
+
+    # Set protocol values based on the detected traceroute mode
+    # (avoids counting irrelevant background UDP traffic like DNS)
+    protocols_seen.add(1)       # ICMP is always present (responses)
+    if mode == 'UDP':
+        protocols_seen.add(17)  # UDP probes
 
     
     # Pass 3 – Build probe table
@@ -354,15 +359,15 @@ def analyze_trace(filename):
     
     # Fragmentation analysis (outgoing probes only)
     
-    frag_count = 0
-    last_frag_offset = 0
+    frag_info = []   # list of (ip_id, frag_count, last_offset) for fragmented datagrams
 
     for key, probe in probes.items():
         frags = probe['fragments']
         if len(frags) > 1 or any(f['mf'] == 1 for f in frags):
-            frag_count = len(frags)
-            last_frag_offset = max(f['frag_offset'] for f in frags)
-            break       # all datagrams fragment the same way
+            fc = len(frags)
+            lo = max(f['frag_offset'] for f in frags)
+            ip_id = probe['ip_id']
+            frag_info.append((ip_id, fc, lo))
 
    
     # Output
@@ -382,8 +387,21 @@ def analyze_trace(filename):
         print(f"{proto}: {name}")
 
     print()
-    print(f"The number of fragments created from the original datagram is: {frag_count}")
-    print(f"The offset of the last fragment is: {last_frag_offset}")
+    if not frag_info:
+        print(f"The number of fragments created from the original datagram is: 0")
+        print(f"The offset of the last fragment is: 0")
+    else:
+        # Check if all fragmented datagrams have the same fragment count/offset
+        unique = set((fc, lo) for _, fc, lo in frag_info)
+        if len(unique) == 1:
+            fc, lo = unique.pop()
+            print(f"The number of fragments created from the original datagram is: {fc}")
+            print(f"The offset of the last fragment is: {lo}")
+        else:
+            for ip_id, fc, lo in frag_info:
+                print(f"The number of fragments created from the original datagram D{ip_id} is: {fc}")
+                print(f"The offset of the last fragment is: {lo}")
+                print()
 
     print()
     # RTTs for intermediate routers (in order)
